@@ -35,4 +35,12 @@ public class BookingRepository(BusinessRoomBookingContext context)
         WorkerLastName = b.Worker.LastName,
       }).ToListAsync();
   }
+
+  public async Task<Booking?> GetByIdWithRoomAsync(Guid id)
+  {
+    return await DbSet
+      .Where(b => b.Id == id)
+      .Include(b => b.Room)
+      .FirstOrDefaultAsync();
+  }
 }

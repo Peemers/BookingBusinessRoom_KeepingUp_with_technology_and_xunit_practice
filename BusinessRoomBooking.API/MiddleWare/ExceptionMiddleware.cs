@@ -1,6 +1,5 @@
 ﻿using System.Net;
 using System.Text.Json;
-using BusinessRoomBooking.Core.Exceptions;
 using BusinessRoomBooking.Core.Exceptions.BookingExceptions;
 using BusinessRoomBooking.Core.Exceptions.EquipmentExceptions;
 using BusinessRoomBooking.Core.Exceptions.RoomExceptions;
@@ -33,6 +32,7 @@ public class ExceptionMiddleware(RequestDelegate next)
       EquipmentAlreadyAssignedException => ((int)HttpStatusCode.Conflict, ex.Message),
       BookingDateAlreadyPassedException => ((int)HttpStatusCode.Conflict, ex.Message),
       WorkerEmailAlreadyExistException => ((int)HttpStatusCode.Conflict, ex.Message),
+      NumberOfParticipantExceededException => ((int)HttpStatusCode.BadRequest, ex.Message),
       _ => ((int)HttpStatusCode.InternalServerError, "Une erreur interne est survenue.")
     };
     context.Response.StatusCode = statusCode;
