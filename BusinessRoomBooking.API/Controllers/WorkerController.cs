@@ -1,5 +1,6 @@
 ﻿using BusinessRoomBooking.Core.Dtos.Worker.Request;
 using BusinessRoomBooking.Core.Dtos.Worker.Response;
+using BusinessRoomBooking.Core.Dtos.Worker.Summaries;
 using BusinessRoomBooking.Core.Exceptions.WorkerExceptions;
 using BusinessRoomBooking.Core.Interfaces.Repositories;
 using BusinessRoomBooking.Core.Interfaces.Services;
@@ -29,5 +30,15 @@ public class WorkerController(
     WorkerResponseDto worker = await workerService.CreateWorkerAsync(dto);
     
     return CreatedAtAction(nameof(GetById), new { id = worker.Id }, worker);
+  }
+
+  [HttpGet]
+  public async Task<ActionResult<IEnumerable<WorkerSummaryDto>>> GetAll()
+  {
+    IEnumerable<Worker> workers = await workerRepository.GetAllAsync();
+    
+    IEnumerable<WorkerSummaryDto> workerSummaries = workers.Select(w => w.ToWorkerSummaryDto());
+    
+    return Ok(workerSummaries);
   }
 }
