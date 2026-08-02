@@ -25,6 +25,11 @@ public class BookingService(
       throw new RoomNotFoundException(dto.RoomId);
     }
 
+    if (dto.NumberOfParticipant > room.MaxCapacity)
+    {
+      throw new NumberOfParticipantExceededException(dto.NumberOfParticipant,  room.MaxCapacity);
+    }
+
     Worker? worker = await workerRepository.GetByIdAsync(dto.WorkerId);
 
     if (worker is null)
@@ -76,12 +81,12 @@ public class BookingService(
 
   public async Task<BookingResponseDto> UpdateBookingDateAsync(Guid bookingId, UpdateBookingRequestDto dto)
   {
-    Booking? booking = await bookingRepository.GetByIdAsync(bookingId);
+    Booking? booking = await bookingRepository.GetByIdWithRoomAsync(bookingId);
     if (booking is null)
     {
       throw new BookingNotFoundException(bookingId);
     }
-
+    
     if (booking.StartDate < DateTime.UtcNow)
     {
       throw new BookingDateAlreadyPassedException(booking.StartDate, bookingId);
@@ -91,6 +96,11 @@ public class BookingService(
     if (hasOverlap)
     {
       throw new BookingOverlapException(booking.RoomId, dto.StartDate, dto.EndDate);
+    }
+    
+    if (dto.NumberOfParticipant > booking.Room.MaxCapacity)
+    {
+      throw new NumberOfParticipantExceededException(dto.NumberOfParticipant,  booking.Room.MaxCapacity);
     }
 
     booking.UpdateFromDto(dto);

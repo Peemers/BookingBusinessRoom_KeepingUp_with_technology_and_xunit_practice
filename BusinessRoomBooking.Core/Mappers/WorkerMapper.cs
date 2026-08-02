@@ -1,5 +1,6 @@
 ﻿using BusinessRoomBooking.Core.Dtos.Worker.Request;
 using BusinessRoomBooking.Core.Dtos.Worker.Response;
+using BusinessRoomBooking.Core.Dtos.Worker.Summaries;
 using BusinessRoomBooking.Domain;
 
 namespace BusinessRoomBooking.Core.Mappers;
@@ -25,6 +26,16 @@ public static class WorkerMapper
       Email = dto.Email,
       FirstName = dto.FirstName,
       LastName = dto.LastName,
+    };
+  }
+
+  public static WorkerSummaryDto ToWorkerSummaryDto(this Worker worker)
+  {
+    return new WorkerSummaryDto
+    {
+      Id = worker.Id,
+      FirstName = worker.FirstName,
+      LastName = worker.LastName,
     };
   }
 }

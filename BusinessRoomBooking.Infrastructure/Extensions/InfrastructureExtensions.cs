@@ -20,7 +20,7 @@ public static class InfrastructureExtensions
     services.AddScoped<IBookingRepository, BookingRepository>();
     services.AddScoped<IRoomRepository, RoomRepository>();
     services.AddScoped<IRoomEquipmentRepository, RoomEquipmentRepository>();
-    services.AddScoped<IRoomEquipmentRepository, RoomEquipmentRepository>();
+    services.AddScoped<IWorkerRepository, WorkerRepository>();
     
     return services;
   }

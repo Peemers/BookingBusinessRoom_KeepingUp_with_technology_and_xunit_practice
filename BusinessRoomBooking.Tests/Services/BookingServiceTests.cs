@@ -194,7 +194,6 @@ public class BookingServiceTests
   }
 
   [Fact]
-
   public async Task CancelBookingAsync_ShouldThrow_WhenBookingIsInThePast()
   {
     IBookingRepository bookingRepository = Substitute.For<IBookingRepository>();
@@ -428,6 +427,49 @@ public class BookingServiceTests
 
     await Assert.ThrowsAsync<BookingOverlapException>(() => bookingService.CreateBookingAsync(dto));
   }
+  [Fact]
+  public async Task CreateBookingAsync_ShouldThrow_WhenNumberOfParticipantsExceeded()
+  {
+    IBookingRepository bookingRepository = Substitute.For<IBookingRepository>();
+    IBaseRepository<Room> roomRepository = Substitute.For<IBaseRepository<Room>>();
+    IBaseRepository<Worker> workerRepository = Substitute.For<IBaseRepository<Worker>>();
+
+    Room room = new Room
+    {
+      MaxCapacity = 5,
+      Location = "test",
+      Id = Guid.NewGuid(),
+      Bookings = new List<Booking>(),
+      RoomEquipments = new List<RoomEquipment>(),
+      Name = "Salle A"
+    };
+
+    Worker worker = new Worker
+    {
+      Id = Guid.NewGuid(),
+      FirstName = "Test",
+      LastName = "Test",
+      Email = "test@test.be",
+      Bookings = new List<Booking>(),
+    };
+
+    CreateBookingRequestDto requestDto = new CreateBookingRequestDto
+    {
+      NumberOfParticipant = 10,
+      RoomId = room.Id,
+      WorkerId = worker.Id,
+      StartDate = DateTime.UtcNow.AddDays(1),
+      EndDate = DateTime.UtcNow.AddDays(1),
+    };
+    
+    roomRepository.GetByIdAsync(room.Id).Returns(room);
+    workerRepository.GetByIdAsync(requestDto.WorkerId).Returns(worker);
+    bookingRepository.HasOverlapAsync(requestDto.RoomId, requestDto.StartDate, requestDto.EndDate).Returns(false);
+    
+    BookingService bookingService = new BookingService(roomRepository, workerRepository, bookingRepository);
+    
+    await Assert.ThrowsAsync<NumberOfParticipantExceededException>(() => bookingService.CreateBookingAsync(requestDto));
+  }
 
   [Fact]
   public async Task UpdateBookingAsync_ShouldUpdateBooking()
@@ -435,7 +477,7 @@ public class BookingServiceTests
     IBookingRepository bookingRepository = Substitute.For<IBookingRepository>();
     IBaseRepository<Room> roomRepository = Substitute.For<IBaseRepository<Room>>();
     IBaseRepository<Worker> workerRepository = Substitute.For<IBaseRepository<Worker>>();
-    
+
     Guid roomId = Guid.NewGuid();
     Guid workerId = Guid.NewGuid();
 
@@ -475,28 +517,28 @@ public class BookingServiceTests
       StartDate = DateTime.UtcNow.AddDays(2),
       EndDate = DateTime.UtcNow.AddDays(2),
     };
-    
-    bookingRepository.GetByIdAsync(booking.Id).Returns(booking);
+
+    bookingRepository.GetByIdWithRoomAsync(booking.Id).Returns(booking);
     bookingRepository.HasOverlapAsync(booking.RoomId, dto.StartDate, dto.EndDate, booking.Id).Returns(false);
-    
+
     BookingService bookingService = new BookingService(roomRepository, workerRepository, bookingRepository);
     BookingResponseDto result = await bookingService.UpdateBookingDateAsync(booking.Id, dto);
-    
+
     Assert.Equal(dto.StartDate, result.StartDate);
     Assert.Equal(dto.EndDate, result.EndDate);
     Assert.Equal(dto.NumberOfParticipant, result.NumberOfParticipant);
-    
+
     await bookingRepository.Received(1).HasOverlapAsync(booking.RoomId, dto.StartDate, dto.EndDate, booking.Id);
     await bookingRepository.Received(1).UpdateAsync(booking);
   }
-  
+
   [Fact]
   public async Task UpdateBookingAsync_ShouldThrow_WhenBookingNotFound()
   {
     IBookingRepository bookingRepository = Substitute.For<IBookingRepository>();
     IBaseRepository<Room> roomRepository = Substitute.For<IBaseRepository<Room>>();
     IBaseRepository<Worker> workerRepository = Substitute.For<IBaseRepository<Worker>>();
-    
+
     Guid roomId = Guid.NewGuid();
     Guid workerId = Guid.NewGuid();
 
@@ -516,21 +558,21 @@ public class BookingServiceTests
       StartDate = DateTime.UtcNow.AddDays(2),
       EndDate = DateTime.UtcNow.AddDays(2),
     };
-    
-    bookingRepository.GetByIdAsync(booking.Id).Returns((Booking?)null);
-    
+
+    bookingRepository.GetByIdWithRoomAsync(booking.Id).Returns((Booking?)null);
+
     BookingService bookingService = new BookingService(roomRepository, workerRepository, bookingRepository);
 
     await Assert.ThrowsAsync<BookingNotFoundException>(() => bookingService.UpdateBookingDateAsync(booking.Id, dto));
   }
-  
+
   [Fact]
   public async Task UpdateBookingAsync_ShouldThrow_WhenBookingDateAlreadyPassed()
   {
     IBookingRepository bookingRepository = Substitute.For<IBookingRepository>();
     IBaseRepository<Room> roomRepository = Substitute.For<IBaseRepository<Room>>();
     IBaseRepository<Worker> workerRepository = Substitute.For<IBaseRepository<Worker>>();
-    
+
     Guid roomId = Guid.NewGuid();
     Guid workerId = Guid.NewGuid();
 
@@ -550,10 +592,10 @@ public class BookingServiceTests
       StartDate = DateTime.UtcNow.AddDays(2),
       EndDate = DateTime.UtcNow.AddDays(2),
     };
-    
-    bookingRepository.GetByIdAsync(booking.Id).Returns(booking);
+
+    bookingRepository.GetByIdWithRoomAsync(booking.Id).Returns(booking);
     BookingService bookingService = new BookingService(roomRepository, workerRepository, bookingRepository);
-    
+
     await Assert.ThrowsAsync<BookingDateAlreadyPassedException>(() => bookingService.UpdateBookingDateAsync(booking.Id, dto));
   }
 
@@ -583,10 +625,63 @@ public class BookingServiceTests
       EndDate = DateTime.UtcNow.AddDays(1),
     };
 
-    bookingRepository.GetByIdAsync(booking.Id).Returns(booking);
+    bookingRepository.GetByIdWithRoomAsync(booking.Id).Returns(booking);
     bookingRepository.HasOverlapAsync(booking.RoomId, dto.StartDate, dto.EndDate, booking.Id).Returns(true);
     BookingService bookingService = new BookingService(roomRepository, workerRepository, bookingRepository);
 
     await Assert.ThrowsAsync<BookingOverlapException>(() => bookingService.UpdateBookingDateAsync(booking.Id, dto));
+  }
+
+  [Fact]
+  public async Task UpdateBookingDateAsync_ShouldThrow_WhenNumberOfParticipantsExceeded()
+  {
+    IBookingRepository bookingRepository = Substitute.For<IBookingRepository>();
+    IBaseRepository<Room> roomRepository = Substitute.For<IBaseRepository<Room>>();
+    IBaseRepository<Worker> workerRepository = Substitute.For<IBaseRepository<Worker>>();
+
+    Worker worker = new Worker
+    {
+      Id = Guid.NewGuid(),
+      FirstName = "John",
+      LastName = "Doe",
+      Email = "test@test.be",
+      Bookings = new List<Booking>()
+    };
+
+    Room room = new Room
+    {
+      Id = Guid.NewGuid(),
+      MaxCapacity = 5,
+      Location = "test",
+      Name = "test",
+      Bookings = new List<Booking>(),
+      RoomEquipments = new List<RoomEquipment>()
+    };
+
+    Booking booking = new Booking
+    {
+      Id = Guid.NewGuid(),
+      NumberOfParticipant = 4,
+      StartDate = DateTime.UtcNow.AddDays(1),
+      EndDate = DateTime.UtcNow.AddDays(1),
+      Worker = worker,
+      WorkerId = worker.Id,
+      Room = room,
+      RoomId = room.Id,
+    };
+
+    UpdateBookingRequestDto requestDto = new UpdateBookingRequestDto
+    {
+      NumberOfParticipant = room.MaxCapacity + 1,
+      StartDate = DateTime.UtcNow.AddDays(1),
+      EndDate = DateTime.UtcNow.AddDays(1),
+    };
+    
+    bookingRepository.GetByIdWithRoomAsync(booking.Id).Returns(booking);
+    bookingRepository.HasOverlapAsync(booking.RoomId, requestDto.StartDate, requestDto.EndDate, booking.Id).Returns(false);
+    
+    BookingService bookingService = new BookingService(roomRepository, workerRepository, bookingRepository);
+    
+    await Assert.ThrowsAsync<NumberOfParticipantExceededException>(() => bookingService.UpdateBookingDateAsync(booking.Id, requestDto));
   }
 }
